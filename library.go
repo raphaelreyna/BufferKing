@@ -42,7 +42,8 @@ func (l *Library) Stored(t *TrackSignal) bool {
 	if !ok {
 		return false
 	}
-	_, ok = albums.Tracks[t.Title]
+	title := fmt.Sprintf("%d - %s", t.TrackNumber, t.Title)
+	_, ok = albums.Tracks[title]
 	return ok
 }
 
@@ -108,7 +109,7 @@ func LoadLibrary(root string) (*Library, error) {
 		track := &TrackSignal{
 			Artist:      dirs[0],
 			Album:       dirs[1],
-			Title:       titleParts[0],
+			Title:       titleParts[1] + " - " + titleParts[2],
 			TrackNumber: int32(tn),
 		}
 
