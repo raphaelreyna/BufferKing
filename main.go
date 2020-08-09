@@ -35,7 +35,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(l)
 
 	conn, err := dbus.SessionBus()
 	if err != nil {
@@ -72,18 +71,20 @@ func main() {
 
 		switch diff := currTrack.Compare(track); diff {
 		case NewTrack:
-			if l.Stored(track) {
-				currTrack = track
-				fmt.Printf("%strack found in library, not recording:%s\n%s\n\n", colorYellow, colorReset, track)
-				continue
-			}
 			if parec.Running() {
 				err = parec.Stop()
 				if err != nil {
 					panic(err)
 				}
 				l.MarkStored(currTrack)
-				fmt.Printf("finished recording new track:\n%s\n\n", currTrack)
+				fmt.Printf("%sfinished recording%s\n\n", colorGreen, colorReset)
+			}
+
+			currTrack = track
+
+			if l.Stored(track) {
+				fmt.Printf("%strack found in library, not recording:%s\n%s\n\n", colorCyan, colorReset, track)
+				continue
 			}
 			parec = &Parec{
 				Device:    device,
@@ -96,9 +97,7 @@ func main() {
 				panic(err)
 			}
 
-			currTrack = track
-
-			fmt.Printf("started recording new track:\n%s\n\n", track)
+			fmt.Printf("%sstarted recording new track:%s\n%s\n\n", colorRed, colorReset, track)
 			continue
 		case Pause:
 			fallthrough

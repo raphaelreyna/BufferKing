@@ -68,3 +68,20 @@ func (p *Parec) Running() bool {
 	}
 	return p.running
 }
+
+func ParecAvailable() bool {
+	_, err := exec.LookPath("parec")
+	return err == nil
+}
+
+func ParecFormats() ([]string, error) {
+	formats := []string{}
+	cmd := exec.Command("parec", "--list-file-formats")
+	_, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: pull out first column from output and remove duplicates
+	return formats, nil
+}
