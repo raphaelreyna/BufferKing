@@ -75,7 +75,7 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 }
 
 func (t *TrackSignal) String() string {
-	return fmt.Sprintf("Title: %s ~ Artist: %s ~ Album: %s ~ Track no.: %d", t.Title, t.Artist, t.Album, t.TrackNumber)
+	return fmt.Sprintf("%s\t%s\t%s", t.Artist, t.Album, t.Title)
 }
 
 func (t *TrackSignal) RelPath() string {

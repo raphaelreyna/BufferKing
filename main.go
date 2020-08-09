@@ -12,6 +12,18 @@ import (
 // valid device strings look like: alsa_output.pci-0000_00_1f.3.analog-stereo.monitor
 const objPath = "/org/mpris/MediaPlayer2"
 
+const (
+	colorReset = "\033[0m"
+
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+	colorPurple = "\033[35m"
+	colorCyan   = "\033[36m"
+	colorWhite  = "\033[37m"
+)
+
 func main() {
 	if len(os.Args) < 3 {
 		panic("not enough args (rootPath device)")
@@ -61,6 +73,8 @@ func main() {
 		switch diff := currTrack.Compare(track); diff {
 		case NewTrack:
 			if l.Stored(track) {
+				currTrack = track
+				fmt.Printf("%strack found in library, not recording:%s\n%s\n\n", colorYellow, colorReset, track)
 				continue
 			}
 			if parec.Running() {
@@ -69,7 +83,7 @@ func main() {
 					panic(err)
 				}
 				l.MarkStored(currTrack)
-				fmt.Printf("finished recording new track:\n %s\n", currTrack)
+				fmt.Printf("finished recording new track:\n%s\n\n", currTrack)
 			}
 			parec = &Parec{
 				Device:    device,
@@ -84,7 +98,7 @@ func main() {
 
 			currTrack = track
 
-			fmt.Printf("started recording new track:\n %s\n", track)
+			fmt.Printf("started recording new track:\n%s\n\n", track)
 			continue
 		case Pause:
 			fallthrough
