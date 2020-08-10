@@ -1,4 +1,4 @@
-package main
+package library
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ type Library struct {
 	Artists map[string]*Artist
 }
 
-func (l *Library) Stored(t *TrackSignal) bool {
+func (l *Library) Stored(t *Track) bool {
 	artists, ok := l.Artists[t.Artist]
 	if !ok {
 		return false
@@ -47,7 +47,7 @@ func (l *Library) Stored(t *TrackSignal) bool {
 	return ok
 }
 
-func (l *Library) MarkStored(t *TrackSignal) {
+func (l *Library) MarkStored(t *Track) {
 	var ok bool
 
 	// Does artist exist?
@@ -75,6 +75,17 @@ func (l *Library) MarkStored(t *TrackSignal) {
 		album.Tracks[t.Title] = struct{}{}
 		return
 	}
+}
+
+// Unhide the file now that its finished
+func (l *Library) FileMarkStored(t *Track) error {
+	newPath := filepath.Join(l.Root, t.RelPath())
+
+	dir := filepath.Dir(newPath)
+	base := filepath.Base(newPath)
+	oldPath := filepath.Join(dir, "."+base)
+
+	return os.Rename(oldPath, newPath)
 }
 
 func LoadLibrary(root string) (*Library, error) {
@@ -106,7 +117,7 @@ func LoadLibrary(root string) (*Library, error) {
 			return err
 		}
 
-		track := &TrackSignal{
+		track := &Track{
 			Artist:      dirs[0],
 			Album:       dirs[1],
 			Title:       titleParts[1] + " - " + titleParts[2],
