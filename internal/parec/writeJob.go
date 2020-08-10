@@ -2,6 +2,7 @@ package parec
 
 import (
 	"context"
+	"fmt"
 	"github.com/raphaelreyna/BufferKing/internal/library"
 	"os"
 	"os/exec"
@@ -12,17 +13,21 @@ import (
 type WriteJob struct {
 	Track *library.Track
 
-	cmd *exec.Cmd
+	parec *Parec
+	cmd   *exec.Cmd
 
 	started time.Time
 	stopped time.Time
 }
 
-func (wj *WriteJob) Start(ctx context.Context, p *Parec) error {
+func (wj *WriteJob) Start(ctx context.Context) error {
+	p := wj.parec
 	wj.started = time.Now()
 	if wj.cmd != nil {
 		return nil
 	}
+
+	p.partsCount += 1
 
 	track := wj.Track
 	track.Format = p.Format
@@ -30,7 +35,7 @@ func (wj *WriteJob) Start(ctx context.Context, p *Parec) error {
 
 	// Make sure the directory we'll be writing to exists
 	dir := filepath.Dir(writePath)
-	fileName := filepath.Base(writePath)
+	fileName := wj.FileName()
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
 		return err
@@ -39,7 +44,7 @@ func (wj *WriteJob) Start(ctx context.Context, p *Parec) error {
 	wj.cmd = exec.CommandContext(ctx, "parec",
 		"-d", p.Device,
 		"--file-format="+p.Format,
-		filepath.Join(dir, "."+fileName),
+		filepath.Join(dir, fileName),
 	)
 
 	err = wj.cmd.Start()
@@ -93,4 +98,16 @@ func (wj *WriteJob) Completed() (bool, time.Duration) {
 	// For some reason there is about a 1.5s difference between the recording time and the track length
 	// 2 seconds should be okay for now ... :(
 	return dt >= -2*time.Second, timeRecorded
+}
+
+// FileName gives the filename of the file that this writejob is writing to.
+// The file is hidden and includes a part number, formatted as: '.(PART_COUNT)TRACK_NO - TITLE.FORMAT'
+func (wj *WriteJob) FileName() string {
+	if wj == nil {
+		return ""
+	}
+
+	t := wj.Track
+	t.Format = wj.parec.Format
+	return fmt.Sprintf(".(%d)%d - %s.%s", wj.parec.partsCount, t.TrackNumber, t.Title, t.Format)
 }

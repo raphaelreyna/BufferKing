@@ -51,7 +51,12 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 		return Paused
 	}
 
-	if t.Track != tt.Track {
+	sameTrack := t.Title == tt.Title
+	sameTrack = sameTrack && t.Artist == tt.Artist
+	sameTrack = sameTrack && t.Album == tt.Album
+	sameTrack = sameTrack && t.TrackNumber == tt.TrackNumber
+	sameTrack = sameTrack && t.Length == tt.Length
+	if !sameTrack {
 		return NewTrack
 	}
 

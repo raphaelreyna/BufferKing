@@ -8,31 +8,10 @@ import (
 	"github.com/raphaelreyna/BufferKing/internal/signal"
 )
 
-const (
-	colorReset = "\033[0m"
-
-	colorRed    = "\033[31m"
-	colorGreen  = "\033[32m"
-	colorYellow = "\033[33m"
-	colorBlue   = "\033[34m"
-	colorPurple = "\033[35m"
-	colorCyan   = "\033[36m"
-	colorWhite  = "\033[37m"
-)
-
-const (
-	CompletedNewRecording = "completed recording new track"
-	UnableToCompleteSkip  = "unable to complete recording track due to early track advancement"
-	UnableToCompletePause = "unable to complete recording track due to pause"
-
-	TrackFoundIgnoring    = "track found in library, ignoring:"
-	TrackStartedRecording = "started recording new track:"
-	TrackUnableToResume   = "unable to resume recording incomplete track due to pause:"
-)
-
 type Conf struct {
-	Root            string
-	SaveIncompletes bool
+	Root                   string
+	SaveIncompletesPaused  bool
+	SaveIncompletesSkipped bool
 	// ObjectPath points to the dbus object we're listening to.
 	// default: /org/mpris/MediaPlayer2
 	ObjectPath string
@@ -78,6 +57,61 @@ func (a *App) StartListening(ctx context.Context) error {
 	return a.Listener.Start(ctx)
 }
 
+func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) error {
+	l := a.Library
+	if wj != nil {
+		if completed, _ := wj.Completed(); completed {
+			l.MarkStored(wj.Track)
+			err := l.FileMarkStored(wj.Track, wj.FileName())
+			if err != nil {
+				return err
+			}
+			a.Print(colorGreen, CompletedNewRecording, nil)
+		} else {
+			if saveIncomplete {
+				l.MarkStored(wj.Track)
+				err := l.FileMarkStored(wj.Track, wj.FileName())
+				if err != nil {
+					return err
+				}
+			}
+			a.Print(colorYellow, failMsg, nil)
+		}
+	}
+
+	return nil
+}
+
+const (
+	colorReset = "\033[0m"
+
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+	colorPurple = "\033[35m"
+	colorCyan   = "\033[36m"
+	colorWhite  = "\033[37m"
+)
+
+const (
+	CompletedNewRecording = "completed recording new track"
+	UnableToCompleteSkip  = "unable to complete recording track due to early track advancement"
+	UnableToCompletePause = "unable to complete recording track due to pause"
+
+	TrackFoundIgnoring    = "track found in library, ignoring:"
+	TrackStartedRecording = "started recording new track:"
+	TrackUnableToResume   = "unable to resume recording incomplete track due to pause:"
+)
+
+type MsgPrinter func()
+
+func (a *App) NewPrinter(color, message string, t *library.Track) MsgPrinter {
+	return func() {
+		a.Print(color, message, t)
+	}
+}
+
 func (a *App) Print(color, message string, t *library.Track) {
 	var s string
 	switch a.Conf.Color {
@@ -85,14 +119,18 @@ func (a *App) Print(color, message string, t *library.Track) {
 		if t == nil {
 			s = fmt.Sprintf("%s%s%s\n\n", color, message, colorReset)
 		} else {
-			s = fmt.Sprintf("%s%s%s\n%s\n", color, message, colorReset, t)
+			s = fmt.Sprintf("%s%s%s\n%s", color, message, colorReset, t)
 		}
 	case false:
 		if t == nil {
 			s = fmt.Sprintf("%s\n\n", message)
 		} else {
-			s = fmt.Sprintf("%s\n%s\n", message, t)
+			s = fmt.Sprintf("%s\n%s", message, t)
 		}
+	}
+
+	if message == TrackFoundIgnoring {
+		s += "\n"
 	}
 
 	fmt.Println(s)

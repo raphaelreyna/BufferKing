@@ -18,15 +18,20 @@ const (
 )
 
 type Parec struct {
-	Root     string
-	Device   string
-	Format   string
-	formats  []string
-	writeJob *WriteJob
+	Root       string
+	Device     string
+	Format     string
+	formats    map[string]struct{}
+	writeJob   *WriteJob
+	partsCount int
 }
 
 func (p *Parec) WriteJob() *WriteJob {
 	return p.writeJob
+}
+
+func (p *Parec) PartsCount() int {
+	return p.partsCount
 }
 
 func (p *Parec) RunningWriteJob() bool {
@@ -37,7 +42,7 @@ func (p *Parec) RunningWriteJob() bool {
 	return p.writeJob.Running()
 }
 
-func (p *Parec) NewWriteJob(ctx context.Context, t *library.Track) (prevWriteJob *WriteJob, err error) {
+func (p *Parec) NewWriteJob(ctx context.Context, t *library.Track, resetPartsCount bool) (prevWriteJob *WriteJob, err error) {
 	prevWriteJob = p.writeJob
 
 	if p.RunningWriteJob() {
@@ -49,10 +54,27 @@ func (p *Parec) NewWriteJob(ctx context.Context, t *library.Track) (prevWriteJob
 
 	p.writeJob = &WriteJob{
 		Track: t,
+		parec: p,
 	}
 
-	err = p.writeJob.Start(ctx, p)
+	if resetPartsCount {
+		p.partsCount = 0
+	}
+
+	err = p.writeJob.Start(ctx)
 	return
+}
+
+func (p *Parec) StopWriteJob() (*WriteJob, error) {
+	if p.RunningWriteJob() {
+		err := p.writeJob.Stop()
+		if err != nil {
+			return p.writeJob, err
+		}
+	}
+	oldWJ := p.writeJob
+	p.writeJob = nil
+	return oldWJ, nil
 }
 
 func (p *Parec) ValidFormat() (bool, error) {
@@ -68,7 +90,7 @@ func (p *Parec) ValidFormat() (bool, error) {
 		return false, nil
 	}
 
-	for _, validFormat := range p.formats {
+	for validFormat, _ := range p.formats {
 		if validFormat == p.Format {
 			return true, nil
 		}

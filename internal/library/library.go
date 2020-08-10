@@ -15,7 +15,9 @@ type Artist struct {
 }
 
 type Album struct {
-	Name   string
+	Name string
+	// Tracks holds track titles as keys for fast lookups
+	// Track titles are formated as 'TrackNo - TrackTitle'
 	Tracks map[string]struct{}
 }
 
@@ -49,11 +51,12 @@ func (l *Library) Stored(t *Track) bool {
 
 func (l *Library) MarkStored(t *Track) {
 	var ok bool
+	title := fmt.Sprintf("%d - %s", t.TrackNumber, t.Title)
 
 	// Does artist exist?
 	var artist *Artist
 	if artist, ok = l.Artists[t.Artist]; !ok {
-		album := NewAlbum(t.Album, t.Title)
+		album := NewAlbum(t.Album, title)
 
 		l.Artists[t.Artist] = &Artist{
 			Name:   t.Artist,
@@ -66,24 +69,23 @@ func (l *Library) MarkStored(t *Track) {
 	// Does album exist?
 	var album *Album
 	if album, ok = artist.Albums[t.Album]; !ok {
-		artist.Albums[t.Album] = NewAlbum(t.Album, t.Title)
+		artist.Albums[t.Album] = NewAlbum(t.Album, title)
 		return
 	}
 
 	// Does track exist?
-	if _, ok = album.Tracks[t.Title]; !ok {
-		album.Tracks[t.Title] = struct{}{}
+	if _, ok = album.Tracks[title]; !ok {
+		album.Tracks[title] = struct{}{}
 		return
 	}
 }
 
 // Unhide the file now that its finished
-func (l *Library) FileMarkStored(t *Track) error {
+func (l *Library) FileMarkStored(t *Track, filename string) error {
 	newPath := filepath.Join(l.Root, t.RelPath())
 
 	dir := filepath.Dir(newPath)
-	base := filepath.Base(newPath)
-	oldPath := filepath.Join(dir, "."+base)
+	oldPath := filepath.Join(dir, filename)
 
 	return os.Rename(oldPath, newPath)
 }

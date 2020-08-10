@@ -13,8 +13,8 @@ func Available() bool {
 	return err == nil
 }
 
-func Formats() ([]string, error) {
-	formats := []string{}
+func Formats() (map[string]struct{}, error) {
+	formats := map[string]struct{}{}
 	cmd := exec.Command("parec", "--list-file-formats")
 	outputBytes, err := cmd.Output()
 	if err != nil {
@@ -31,17 +31,16 @@ func Formats() ([]string, error) {
 		if err != nil && !eof {
 			return nil, err
 		}
+		if eof {
+			break
+		}
 
 		parts := strings.SplitN(line, "\t", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid line from parec: %s", line)
 		}
 
-		formats = append(formats, parts[0])
-
-		if eof {
-			break
-		}
+		formats[parts[0]] = struct{}{}
 	}
 	return formats, nil
 }

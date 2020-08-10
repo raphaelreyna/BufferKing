@@ -18,12 +18,13 @@ func main() {
 	}
 
 	c := &app.Conf{
-		Root:            os.Args[1],
-		Device:          os.Args[2],
-		ObjectPath:      "/org/mpris/MediaPlayer2",
-		Format:          "wav",
-		SaveIncompletes: true,
-		Color:           true,
+		Root:                   os.Args[1],
+		Device:                 os.Args[2],
+		ObjectPath:             "/org/mpris/MediaPlayer2",
+		Format:                 "wav",
+		SaveIncompletesSkipped: false,
+		SaveIncompletesPaused:  false,
+		Color:                  true,
 	}
 
 	a := &app.App{
