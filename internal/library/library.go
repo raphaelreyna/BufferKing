@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Artist struct {
@@ -33,6 +34,7 @@ func NewAlbum(albumName, trackName string) *Album {
 type Library struct {
 	Root    string
 	Artists map[string]*Artist
+	sync.Mutex
 }
 
 func (l *Library) Stored(t *Track) bool {
@@ -80,6 +82,25 @@ func (l *Library) MarkStored(t *Track) {
 	}
 }
 
+func (l *Library) UnmarkStored(t *Track) {
+	var ok bool
+	title := fmt.Sprintf("%d - %s", t.TrackNumber, t.Title)
+
+	// Does artist exist?
+	var artist *Artist
+	if artist, ok = l.Artists[t.Artist]; !ok {
+		return
+	}
+
+	// Does album exist?
+	var album *Album
+	if album, ok = artist.Albums[t.Album]; !ok {
+		return
+	}
+
+	delete(album.Tracks, title)
+}
+
 // Unhide the file now that its finished
 func (l *Library) FileMarkStored(t *Track, filename string) error {
 	newPath := filepath.Join(l.Root, t.RelPath())
@@ -109,11 +130,15 @@ func LoadLibrary(root string) (*Library, error) {
 
 		dirs := strings.Split(relPath, "/")
 		if len(dirs) != 3 {
-			return fmt.Errorf("invalid path: %s %+v", relPath, dirs)
+			// return fmt.Errorf("invalid path: %s %+v", relPath, dirs)
+			return nil
 		}
 		// 0 -> TrackNumber; 1 -> Title; 2-> Format
 		titleParts := re.FindStringSubmatch(dirs[2])
 
+		if len(titleParts) < 3 {
+			return nil
+		}
 		tn, err := strconv.Atoi(titleParts[1])
 		if err != nil {
 			return err

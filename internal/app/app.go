@@ -39,6 +39,7 @@ func (a *App) LoadConf() error {
 		Device: c.Device,
 		Format: c.Format,
 	}
+
 	a.Library, err = library.LoadLibrary(c.Root)
 	if err != nil {
 		return err
@@ -61,19 +62,25 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 	l := a.Library
 	if wj != nil {
 		if completed, _ := wj.Completed(); completed {
+			l.Lock()
 			l.MarkStored(wj.Track)
 			err := l.FileMarkStored(wj.Track, wj.FileName())
 			if err != nil {
+				l.Unlock()
 				return err
 			}
+			l.Unlock()
 			a.Print(colorGreen, CompletedNewRecording, nil)
 		} else {
 			if saveIncomplete {
+				l.Lock()
 				l.MarkStored(wj.Track)
 				err := l.FileMarkStored(wj.Track, wj.FileName())
 				if err != nil {
+					l.Unlock()
 					return err
 				}
+				l.Unlock()
 			}
 			a.Print(colorYellow, failMsg, nil)
 		}
