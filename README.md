@@ -9,6 +9,16 @@ Record your computers audio output to an audio library.
 BufferKing listens for 'Play/Pause/Next/Previous' notifications from any music player using DBus. When it detects that a new track is being played it will start recording it.
 
 
+### Example usage
+To get started, a path to the root of the library you wish to record to is required as the first argument to BufferKing.
+The audio source from which to record from is also needed; however BufferKing will present you with the available options if you don't provide an audio source.
+```bash
+$ BufferKing ~/Music
+0) alsa_output.pci-0000_00_1f.3.analog-stereo.monitor
+1) alsa_output.pci-0000_01_00.1.hdmi-stereo.monitor
+Record from which source:
+```
+
 ### Current Limitations
 
 BufferKing doesn't handle pausing very well (at all) right now.
