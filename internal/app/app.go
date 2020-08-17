@@ -6,6 +6,8 @@ import (
 	"github.com/raphaelreyna/BufferKing/internal/library"
 	"github.com/raphaelreyna/BufferKing/internal/parec"
 	"github.com/raphaelreyna/BufferKing/internal/signal"
+	"os"
+	"path/filepath"
 )
 
 type Conf struct {
@@ -81,6 +83,15 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 					return err
 				}
 				l.Unlock()
+			} else {
+				path := filepath.Join(a.Conf.Root,
+					wj.Track.Artist,
+					wj.Track.Album,
+					wj.FileName(),
+				)
+				if err := os.Remove(path); err != nil {
+					return err
+				}
 			}
 			a.Print(colorYellow, failMsg, nil)
 		}

@@ -84,7 +84,7 @@ func (wj *WriteJob) Running() bool {
 	return started && !stopped
 }
 
-// Completed returns if a a track was completely recorded (with some fuzzing ._.)
+// Completed returns if a track was completely recorded (with some fuzzing ._.)
 // The second return value is how long the recording lasted for
 func (wj *WriteJob) Completed() (bool, time.Duration) {
 	if wj.stopped.IsZero() || wj.started.IsZero() {
@@ -96,8 +96,8 @@ func (wj *WriteJob) Completed() (bool, time.Duration) {
 
 	// If dt >= 0 then at least the entire track was recorded
 	// For some reason there is about a 1.5s difference between the recording time and the track length
-	// 2 seconds should be okay for now ... :(
-	return dt >= -2*time.Second, timeRecorded
+	// 2.5 seconds should be okay for now ... :(
+	return dt >= -2500*time.Millisecond, timeRecorded
 }
 
 // FileName gives the filename of the file that this writejob is writing to.
