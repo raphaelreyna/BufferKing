@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ func Available() bool {
 	return err == nil
 }
 
-func Formats() (map[string]struct{}, error) {
+func Formats() ([]string, error) {
 	formats := map[string]struct{}{}
 	cmd := exec.Command("parec", "--list-file-formats")
 	outputBytes, err := cmd.Output()
@@ -42,5 +43,36 @@ func Formats() (map[string]struct{}, error) {
 
 		formats[parts[0]] = struct{}{}
 	}
-	return formats, nil
+
+	formatsSlice := []string{}
+	for format, _ := range formats {
+		formatsSlice = append(formatsSlice, format)
+	}
+	return formatsSlice, nil
+}
+
+func Sources() ([]string, error) {
+	re := regexp.MustCompile(`<(.+\.monitor)`)
+
+	cmd := exec.Command("pacmd", "list")
+	outputBytes, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	hashmap := map[string]struct{}{}
+	for _, rawSource := range re.FindAllSubmatch(outputBytes, -1) {
+		// rawSource is of type [][]byte where the first element is the entire matching string
+		if len(rawSource) != 2 {
+			continue
+		}
+		hashmap[string(rawSource[1])] = struct{}{}
+	}
+
+	sources := []string{}
+	for source, _ := range hashmap {
+		sources = append(sources, source)
+	}
+
+	return sources, nil
 }

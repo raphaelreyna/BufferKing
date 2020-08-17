@@ -21,7 +21,7 @@ type Parec struct {
 	Root       string
 	Device     string
 	Format     string
-	formats    map[string]struct{}
+	formats    []string
 	writeJob   *WriteJob
 	partsCount int
 }
@@ -90,7 +90,7 @@ func (p *Parec) ValidFormat() (bool, error) {
 		return false, nil
 	}
 
-	for validFormat, _ := range p.formats {
+	for _, validFormat := range p.formats {
 		if validFormat == p.Format {
 			return true, nil
 		}
