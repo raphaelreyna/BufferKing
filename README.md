@@ -9,7 +9,7 @@ Record your computers audio output to an audio library.
 BufferKing listens for 'Play/Pause/Next/Previous' notifications from any music player using DBus. When it detects that a new track is being played it will start recording it.
 
 
-### Limitations
+### Current Limitations
 
 BufferKing doesn't handle pausing very well (at all) right now.
 If a track is being recorded and is paused or skipped it is discarded by default.
