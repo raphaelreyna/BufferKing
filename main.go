@@ -8,69 +8,113 @@ import (
 	"github.com/raphaelreyna/BufferKing/internal/signal"
 	flag "github.com/spf13/pflag"
 	"os"
+	osgn "os/signal"
 	"strconv"
 )
 
+var Version = ""
+
 func main() {
+	// Setup program exit
+	retCode := 1
+	defer func() { os.Exit(retCode) }()
 
-	c := &app.Conf{}
+	// Does the machine have the parec binary for us to use?
+	if !parec.Available() {
+		fmt.Println("parec installation not found")
+		return
+	}
 
-	listFormats := false
-	listSources := false
+	// Setup and parse flags
+	var (
+		listFormats bool
+		listSources bool
+		version     bool
+	)
+	c := userConf(&listFormats, &listSources, &version)
 
-	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
-	flag.StringVarP(&c.Format, "format", "f", "wav", `Audio format to use when recording.`)
-	flag.BoolVarP(&c.SaveIncompletesSkipped, "keep-skipped", "S", false, `Keep incomplete recording due to skipping.`)
-	flag.BoolVarP(&c.SaveIncompletesPaused, "keep-paused", "P", false, `Keep incomplete recording due to pausing.`)
-	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)
-	flag.BoolVar(&listFormats, "list-formats", false, `List supported audio formats.`)
-	flag.BoolVar(&listSources, "list-sources", false, `List available audio sources to record.`)
-
-	flag.Parse()
-
+	// Does the user just want some basic info or are we recording?
+	if version {
+		printVersion()
+		retCode = 0
+		return
+	}
 	if listFormats {
-		formats, err := parec.Formats()
-		if err != nil {
-			panic(err)
+		if err := printFormats(); err == nil {
+			retCode = 0
 		}
-
-		for _, format := range formats {
-			fmt.Println(format)
-		}
-
 		return
 	}
 	if listSources {
-		sources, err := parec.Sources()
-		if err != nil {
-			panic(err)
+		if err := printSources(); err == nil {
+			retCode = 0
 		}
-
-		for _, source := range sources {
-			fmt.Println(source)
-		}
-
 		return
 	}
 
+	// Make sure user gave a valid path to library
 	argsCount := len(os.Args)
 	if argsCount < 2 {
-		panic("not enough args, need path to root directory for library")
+		fmt.Println("not enough args, need path to root directory for library")
+		return
 	}
 	info, err := os.Stat(os.Args[1])
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 	if !info.IsDir() {
-		panic("need path to root directory for library")
+		fmt.Println("need path to root directory for library")
+		return
 	}
-
 	c.Root = os.Args[1]
 
-	if argsCount == 2 {
+	// Grab device that will be our audio source to record from
+	c.Device, err = source(os.Args)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Create and configure app
+	a := &app.App{
+		Conf:       c,
+		SignalChan: make(chan *signal.TrackSignal),
+	}
+	if err := a.LoadConf(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Create context, and listen for kill signal
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	sigChan := make(chan os.Signal)
+	osgn.Notify(sigChan, os.Kill)
+	go func() {
+		<-sigChan
+		cancelFunc()
+	}()
+
+	// Run bufferking main logic
+	if err := a.StartListening(ctx); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err := a.Run(ctx); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	retCode = 0
+}
+
+func source(argv []string) (string, error) {
+	var device string
+	if len(argv) == 2 {
 		sources, err := parec.Sources()
 		if err != nil {
-			panic(err)
+			return "", err
 		}
 
 		for index, source := range sources {
@@ -83,34 +127,67 @@ func main() {
 
 		devIndex, err := strconv.Atoi(devIndexString)
 		if err != nil {
-			panic(err)
+			return "", err
 		}
 
 		if devIndex < len(sources) && 0 <= devIndex {
-			c.Device = sources[devIndex]
+			device = sources[devIndex]
+		} else {
+			return "", fmt.Errorf("invalid source choice")
 		}
 	} else {
-		c.Device = os.Args[2]
+		device = argv[2]
+	}
+	return device, nil
+}
+
+func printVersion() {
+	fmt.Printf("bufferking version: %s\n", Version)
+}
+
+func printFormats() error {
+	formats, err := parec.Formats()
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
 
-	if !parec.Available() {
-		panic("parec installation not found")
+	for _, format := range formats {
+		fmt.Println(format)
 	}
 
-	a := &app.App{
-		Conf:       c,
-		SignalChan: make(chan *signal.TrackSignal),
+	return nil
+}
+
+func printSources() error {
+	sources, err := parec.Sources()
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
 
-	if err := a.LoadConf(); err != nil {
-		panic(err)
+	for _, source := range sources {
+		fmt.Println(source)
 	}
 
-	if err := a.StartListening(context.TODO()); err != nil {
-		panic(err)
-	}
+	return nil
+}
 
-	if err := a.Run(context.TODO()); err != nil {
-		panic(err)
-	}
+// userConf parses users flag input into a Conf struct
+func userConf(formats, sources, version *bool) *app.Conf {
+	c := app.Conf{}
+	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
+	flag.StringVarP(&c.Format, "format", "f", "wav", `Audio format to use when recording.`)
+	flag.BoolVarP(&c.SaveIncompletesSkipped, "keep-skipped", "S", false, `Keep incomplete recording due to skipping and mark the track as completed.`)
+	flag.BoolVarP(&c.SaveIncompletesPaused, "keep-paused", "P", false, `Keep incomplete recording due to pausing and mark the track as completed.`)
+	flag.BoolVarP(&c.RemovePartials, "remove-partials", "r", false, `Remove partial recording parts.`)
+	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)
+
+	flag.BoolVar(formats, "list-formats", false, `List supported audio formats.`)
+	flag.BoolVar(sources, "list-sources", false, `List available audio sources to record.`)
+	flag.BoolVarP(version, "version", "v", false, `Print current version.`)
+
+	flag.Parse()
+
+	return &c
 }
