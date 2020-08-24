@@ -14,6 +14,7 @@ type Conf struct {
 	Root                   string
 	SaveIncompletesPaused  bool
 	SaveIncompletesSkipped bool
+	RemovePartials         bool
 	// ObjectPath points to the dbus object we're listening to.
 	// default: /org/mpris/MediaPlayer2
 	ObjectPath string
@@ -83,7 +84,7 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 					return err
 				}
 				l.Unlock()
-			} else {
+			} else if a.Conf.RemovePartials {
 				path := filepath.Join(a.Conf.Root,
 					wj.Track.Artist,
 					wj.Track.Album,
