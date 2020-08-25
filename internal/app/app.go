@@ -51,8 +51,7 @@ func (a *App) LoadConf() error {
 	a.Listener = &signal.Listener{
 		TrackSignals: a.SignalChan,
 		ObjectPath:   c.ObjectPath,
-		// TODO: Load parser based on configuration
-		Parser: *signal.DefaultParser(),
+		Parser:       *signal.DefaultParser(),
 	}
 	return nil
 }

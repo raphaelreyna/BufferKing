@@ -31,7 +31,7 @@ func main() {
 		listSources bool
 		version     bool
 	)
-	c := userConf(&listFormats, &listSources, &version)
+	c, p := userConf(&listFormats, &listSources, &version)
 
 	// Does the user just want some basic info or are we recording?
 	if version {
@@ -85,6 +85,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	a.Listener.Parser = *p
 
 	// Create context, and listen for kill signal
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -174,7 +175,7 @@ func printSources() error {
 }
 
 // userConf parses users flag input into a Conf struct
-func userConf(formats, sources, version *bool) *app.Conf {
+func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	c := app.Conf{}
 	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
 	flag.StringVarP(&c.Format, "format", "f", "wav", `Audio format to use when recording.`)
@@ -187,7 +188,18 @@ func userConf(formats, sources, version *bool) *app.Conf {
 	flag.BoolVar(sources, "list-sources", false, `List available audio sources to record.`)
 	flag.BoolVarP(version, "version", "v", false, `Print current version.`)
 
+	p := signal.Parser{}
+	flag.StringVar(&p.MetaDataKey, "metadata-key", "Metadata", `DBus metadata key`)
+	flag.StringVar(&p.TitleKey, "title-key", "xesam:title", `DBus title key`)
+	flag.StringVar(&p.ArtistKey, "artist-key", "xesam:artist", `DBus artist key`)
+	flag.StringVar(&p.AlbumKey, "album-key", "xesam:album", `DBus album key`)
+	flag.StringVar(&p.TrackNumber, "track-no-key", "xesam:trackNumber", `DBus track number key`)
+	flag.StringVar(&p.LengthKey, "length-key", "mrpis:length", `DBus track length key`)
+	flag.StringVar(&p.StatusKey, "status-key", "PlaybackStatus", `DBus status key`)
+	flag.StringVar(&p.PlayToken, "play-token", "Playing", `DBus play token`)
+	flag.StringVar(&p.PauseToken, "pause-token", "Paused", `DBus pause token`)
+
 	flag.Parse()
 
-	return &c
+	return &c, &p
 }
